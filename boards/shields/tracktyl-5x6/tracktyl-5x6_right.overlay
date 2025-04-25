@@ -2,6 +2,12 @@
 #include <input/processors.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
+/ {
+    chosen {
+        zephyr,display = &oled;
+    };
+};
+
 &default_transform {
     col-offset = <6>;
 };
@@ -19,7 +25,7 @@
 };
 
 &pinctrl {
-    spi0_default: spi0_default {
+    spi1_default: spi1_default {
         group1 {
             psels = <NRF_PSEL(SPIM_SCK, 0, 22)>,
                 <NRF_PSEL(SPIM_MOSI, 0, 20)>,
@@ -27,7 +33,7 @@
         };
     };
 
-    spi0_sleep: spi0_sleep {
+    spi1_sleep: spi1_sleep {
         group1 {
             psels = <NRF_PSEL(SPIM_SCK, 0, 22)>,
                 <NRF_PSEL(SPIM_MOSI, 0, 20)>,
@@ -35,13 +41,28 @@
             low-power-enable;
         };
     };
+
+    i2c0_default: i2c0_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SCL, 1, 7)>,
+                <NRF_PSEL(TWIM_SDA, 0, 6)>;
+        };
+    };
+
+    i2c0_sleep: i2c0_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SCL, 1, 7)>,
+                <NRF_PSEL(TWIM_SDA, 0, 6)>;
+            low-power-enable;
+        };
+    };
 };
 
-&spi0 {
+&spi1 {
     status = "okay";
     compatible = "nordic,nrf-spim";
-    pinctrl-0 = <&spi0_default>;
-    pinctrl-1 = <&spi0_sleep>;
+    pinctrl-0 = <&spi1_default>;
+    pinctrl-1 = <&spi1_sleep>;
     pinctrl-names = "default", "sleep";
     cs-gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
 
@@ -65,5 +86,33 @@
         layers = <3>;
         input-processors = <&zip_xy_to_scroll_mapper>;
         process-next;
+    };
+};
+
+&i2c0 {
+    status = "okay";
+    compatible = "nordic,nrf-twim"; // Good practice to include compatible
+    clock-frequency = <I2C_BITRATE_STANDARD>; // Or I2C_BITRATE_FAST (400kHz)
+    pinctrl-0 = <&i2c0_default>;
+    pinctrl-1 = <&i2c0_sleep>;
+    pinctrl-names = "default", "sleep";
+
+    // Increase internal buffer size. Needs >= 100 bytes based on error.
+    // 128 is a reasonable value.
+    zephyr,concat-buf-size = <300>;
+
+    oled: ssd1306@3c {
+        compatible = "solomon,ssd1306fb";
+        reg = <0x3c>;
+        width = <128>;
+        height = <32>;
+        segment-offset = <0>;
+        page-offset = <0>;
+        display-offset = <0>;
+        multiplex-ratio = <31>;
+        segment-remap;
+        com-invdir;
+        com-sequential;
+        prechargep = <0x22>;
     };
 };
